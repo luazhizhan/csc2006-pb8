@@ -60,7 +60,11 @@ void loop()
     Serial.print("got request from : 0x");
     Serial.print(from, HEX);
     Serial.print(": ");
-    Serial.println((char *)buf);
+    for (uint8_t i = 0; i < len; i++)
+    {
+      Serial.print((char)buf[i]);
+    }
+    Serial.println();
 
     // Send a reply back to the originator client
     if (manager.sendtoWait(data, sizeof(data), from) != RH_ROUTER_ERROR_NONE)

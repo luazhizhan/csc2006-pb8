@@ -1,6 +1,6 @@
 /**
- * RH_TEST_NETWORK 1 is enabled in RHRouter.h for testing mesh network
- * Uncomment for production
+ * Uncomment RH_TEST_NETWORK 1 in RHRouter.h for testing mesh network
+ * Comment for production
  */
 #include <SPI.h>
 #include <RH_RF95.h>
@@ -10,6 +10,9 @@
 #define RFM95_CS 10
 #define RFM95_RST 9
 #define RFM95_INT 2
+
+// MQ2 Gas/Smoke Sensor
+#define MQ2pin 8
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 454.5
@@ -49,30 +52,36 @@ void setup()
   rf95.setFrequency(RF95_FREQ);
   rf95.setTxPower(13, false);
   rf95.setCADTimeout(500);
-  nextTxTime = millis();
+
+  Serial.println("MQ2 warming up!");
+  delay(5000); // allow the MQ2 to warm up
 }
 
 void loop()
 {
 
-  uint8_t data[] = "CLIENT1!";
+  // 0 - smoke detected
+  // 1 - no smoke detected
+  int sensorValue = digitalRead(MQ2pin); // read digital output pin
+
+  // Send a message to a rf95-mesh-server
+  char data[11];
+  sprintf(data, "client1 - %d", sensorValue);
+  uint8_t dataBytes[11];
+  memcpy(dataBytes, data, sizeof(data));
+
   uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
+  Serial.println("Sending to gateway");
 
-  if (millis() > nextTxTime)
+  // Send a message to a rf95-mesh-server
+  // A route to the destination will be automatically discovered.
+  if (manager.sendtoWait(dataBytes, sizeof(dataBytes), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
   {
-    nextTxTime += TXINTERVAL;
-    Serial.println("Sending to gateway");
-
-    // Send a message to a rf95-mesh-server
-    // A route to the destination will be automatically discovered.
-    if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
-    {
-      Serial.println("Sent to next hop");
-    }
-    else
-    {
-      Serial.println("sendtoWait failed");
-    }
+    Serial.println("Sent to next hop");
+  }
+  else
+  {
+    Serial.println("sendtoWait failed");
   }
 
   // Radio needs to stay always in receive mode ( to process/forward messages )
@@ -85,4 +94,6 @@ void loop()
     Serial.print(": ");
     Serial.println((char *)buf);
   }
+
+  delay(2000);
 }

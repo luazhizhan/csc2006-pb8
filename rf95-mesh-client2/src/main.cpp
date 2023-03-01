@@ -1,6 +1,6 @@
 /**
- * RH_TEST_NETWORK 1 is enabled in RHRouter.h for testing mesh network
- * Uncomment for production
+ * Uncomment RH_TEST_NETWORK 1 in RHRouter.h for testing mesh network
+ * Comment for production
  */
 #include <SPI.h>
 #include <RH_RF95.h>
