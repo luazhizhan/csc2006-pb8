@@ -59,7 +59,6 @@ void setup()
 
 void loop()
 {
-
   // 0 - smoke detected
   // 1 - no smoke detected
   int sensorValue = digitalRead(MQ2pin); // read digital output pin
@@ -69,8 +68,6 @@ void loop()
   sprintf(data, "client1 - %d", sensorValue);
   uint8_t dataBytes[11];
   memcpy(dataBytes, data, sizeof(data));
-
-  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
   Serial.println("Sending to gateway");
 
   // Send a message to a rf95-mesh-server
@@ -85,6 +82,7 @@ void loop()
   }
 
   // Radio needs to stay always in receive mode ( to process/forward messages )
+  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
   uint8_t from;
   if (manager.recvfromAck(buf, &len, &from))
@@ -95,5 +93,5 @@ void loop()
     Serial.println((char *)buf);
   }
 
-  delay(2000);
+  delay(5000);
 }

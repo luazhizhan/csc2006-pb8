@@ -49,33 +49,26 @@ void setup()
   rf95.setFrequency(RF95_FREQ);
   rf95.setTxPower(13, false);
   rf95.setCADTimeout(500);
-  nextTxTime = millis();
 }
 
 void loop()
 {
-
   uint8_t data[] = "CLIENT2!";
-  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
+  Serial.println("Sending to gateway");
 
-  if (millis() > nextTxTime)
+  // Send a message to a rf95-mesh-server
+  // A route to the destination will be automatically discovered.
+  if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
   {
-    nextTxTime += TXINTERVAL;
-    Serial.println("Sending to gateway");
-
-    // Send a message to a rf95-mesh-server
-    // A route to the destination will be automatically discovered.
-    if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
-    {
-      Serial.println("Sent to next hop");
-    }
-    else
-    {
-      Serial.println("sendtoWait failed");
-    }
+    Serial.println("Sent to next hop");
+  }
+  else
+  {
+    Serial.println("sendtoWait failed");
   }
 
   // Radio needs to stay always in receive mode ( to process/forward messages )
+  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
   uint8_t from;
   if (manager.recvfromAck(buf, &len, &from))
@@ -85,4 +78,6 @@ void loop()
     Serial.print(": ");
     Serial.println((char *)buf);
   }
+
+  delay(5000);
 }
