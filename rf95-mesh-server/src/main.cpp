@@ -20,56 +20,54 @@
 #define CLIENT2_ADDRESS 2
 #define SERVER_ADDRESS 3
 
-// Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
-// RadioHead Mesh Manager
 RHMesh manager(rf95, SERVER_ADDRESS);
 
 void setup()
 {
   Serial.begin(9600);
-
   if (!manager.init())
   {
-    Serial.println("init failed");
-  }
-  else
-  {
-    Serial.println("done");
+    Serial.println("Manager init failed");
+    while (1)
+      ;
   }
   Serial.println("LoRa radio init OK!");
-
   Serial.print("Set Freq to: ");
   Serial.println(RF95_FREQ);
 
   rf95.setFrequency(RF95_FREQ);
   rf95.setTxPower(13, false);
-  rf95.setCADTimeout(500);
 }
 
 void loop()
 {
-  uint8_t data[] = "And hello back to you from server";
-  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
-
-  uint8_t len = sizeof(buf);
-  uint8_t from;
-  if (manager.recvfromAck(buf, &len, &from))
+  if (manager.available())
   {
-    Serial.print("got request from : 0x");
-    Serial.print(from, HEX);
-    Serial.print(": ");
-    for (uint8_t i = 0; i < len; i++)
+    uint8_t data[] = "ACK";
+    uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    uint8_t from;
+    if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print((char)buf[i]);
-    }
-    Serial.println();
+      Serial.print("got request from : 0x");
+      Serial.print(from, HEX);
+      Serial.print(": ");
+      for (uint8_t i = 0; i < len; i++)
+      {
+        Serial.print((char)buf[i]);
+      }
+      Serial.println();
 
-    // Send a reply back to the originator client
-    if (manager.sendtoWait(data, sizeof(data), from) != RH_ROUTER_ERROR_NONE)
+      // Send a reply back to the originator client
+      if (manager.sendtoWait(data, sizeof(data), from) != RH_ROUTER_ERROR_NONE)
+      {
+        Serial.println("sendtoWait failed");
+      }
+    }
+    else
     {
-      Serial.println("sendtoWait failed");
+      Serial.println("recvfromAck failed");
     }
   }
 }

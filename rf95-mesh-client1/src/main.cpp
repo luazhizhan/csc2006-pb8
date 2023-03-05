@@ -23,27 +23,19 @@
 #define CLIENT2_ADDRESS 2
 #define SERVER_ADDRESS 3
 
-#define TXINTERVAL 1000 // delay between successive transmissions
-unsigned long nextTxTime;
-
-// Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
-// RadioHead Mesh Manager
 RHMesh manager(rf95, CLIENT1_ADDRESS);
 
 void setup()
 {
   Serial.begin(9600);
-
   if (!manager.init())
   {
-    Serial.println("init failed");
+    Serial.println("Manager init failed");
+    while (1)
+      ;
   }
-  else
-  {
-    Serial.println("done");
-  }
+
   Serial.println("LoRa radio init OK!");
 
   Serial.print("Set Freq to: ");
@@ -51,47 +43,54 @@ void setup()
 
   rf95.setFrequency(RF95_FREQ);
   rf95.setTxPower(13, false);
-  rf95.setCADTimeout(500);
 
   Serial.println("MQ2 warming up!");
-  delay(5000); // allow the MQ2 to warm up
+  delay(1000); // allow the MQ2 to warm up
 }
 
 void loop()
 {
-  // 0 - smoke detected
-  // 1 - no smoke detected
-  int sensorValue = digitalRead(MQ2pin); // read digital output pin
-
-  // Send a message to a rf95-mesh-server
-  char data[11];
-  sprintf(data, "client1 - %d", sensorValue);
-  uint8_t dataBytes[11];
-  memcpy(dataBytes, data, sizeof(data));
-  Serial.println("Sending to gateway");
-
-  // Send a message to a rf95-mesh-server
-  // A route to the destination will be automatically discovered.
-  if (manager.sendtoWait(dataBytes, sizeof(dataBytes), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
+  if (millis() % 5000 == 0)
   {
-    Serial.println("Sent to next hop");
-  }
-  else
-  {
-    Serial.println("sendtoWait failed");
+    // 0 - smoke detected
+    // 1 - no smoke detected
+    int sensorValue = digitalRead(MQ2pin); // read digital output pin
+
+    // Send a message to a rf95-mesh-server
+    char data[11];
+    sprintf(data, "client1 - %d", sensorValue);
+    uint8_t dataBytes[11];
+    memcpy(dataBytes, data, sizeof(data));
+    Serial.println("Sending to gateway");
+
+    // Send a message to a rf95-mesh-server
+    // A route to the destination will be automatically discovered.
+    if (manager.sendtoWait(dataBytes, sizeof(dataBytes), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
+    {
+      Serial.println("Sent to next hop");
+    }
+    else
+    {
+      Serial.println("sendtoWait failed");
+    }
   }
 
   // Radio needs to stay always in receive mode ( to process/forward messages )
-  uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-  uint8_t from;
-  if (manager.recvfromAck(buf, &len, &from))
+  if (manager.available())
   {
-    Serial.print("got message from : 0x");
-    Serial.print(from, HEX);
-    Serial.print(": ");
-    Serial.println((char *)buf);
+    uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    uint8_t from;
+    if (manager.recvfromAck(buf, &len, &from))
+    {
+      Serial.print("got message from : 0x");
+      Serial.print(from, HEX);
+      Serial.print(": ");
+      Serial.println((char *)buf);
+    }
+    else
+    {
+      Serial.println("recvfromAck failed");
+    }
   }
-
-  delay(5000);
 }
