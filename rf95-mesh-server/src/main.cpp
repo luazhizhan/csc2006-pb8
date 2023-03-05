@@ -6,6 +6,7 @@
 #include <RH_RF95.h>
 #include <RHMesh.h>
 #include <RHRouter.h>
+#include <Wire.h>
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -20,15 +21,31 @@
 #define CLIENT2_ADDRESS 2
 #define SERVER_ADDRESS 3
 
+// Define Slave Address
+#define SLAVE_ADDR 60
+
+// Define size of return response
+#define RESPONSE_SIZE 5
+
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // RadioHead Mesh Manager
 RHMesh manager(rf95, SERVER_ADDRESS);
 
+// Define I2C functions
+void requestEvent();
+void receiveEvent();
+
+String answer = "ABCDE";
+
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
+
+  Wire.begin(SLAVE_ADDR);
+  Wire.onRequest(requestEvent);
+  Wire.onReceive(receiveEvent);
 
   if (!manager.init())
   {
@@ -72,4 +89,35 @@ void loop()
       Serial.println("sendtoWait failed");
     }
   }
+}
+
+void requestEvent()
+{
+  byte response[RESPONSE_SIZE];
+
+  // for(byte i=0; i<RESPONSE_SIZE; i++){
+  //   response[i] = (byte)answer.charAt(i);
+  //   Serial.println(response[i]);
+  // }
+
+  memset(response, 0, RESPONSE_SIZE); // clear the response buffer
+  for (byte i = 0; i < RESPONSE_SIZE; i++)
+  {
+    response[i] = (byte)answer.charAt(i);
+    Serial.println(response[i]);
+  }
+
+  Wire.write(response, sizeof(response));
+  Serial.println("I2C request event");
+}
+
+void receiveEvent()
+{
+  String receiveInput = "";
+  while (0 < Wire.available())
+  {
+    char c = Wire.read();
+    receiveInput += c;
+  }
+  Serial.println(receiveInput);
 }
