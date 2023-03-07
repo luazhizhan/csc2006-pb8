@@ -6,6 +6,7 @@
 #include <RH_RF95.h>
 #include <RHMesh.h>
 #include <RHRouter.h>
+#include <Wire.h>
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -20,12 +21,25 @@
 #define CLIENT2_ADDRESS 2
 #define SERVER_ADDRESS 3
 
+// Define slave address
+#define SLAVE_ADDRESS 0x3C
+
+// Define size of return response from slave 
+#define RESPONSE_SIZE 5
+
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, SERVER_ADDRESS);
 
+// Define I2C receive and request event
+void requestEvent();
+void receiveEvent(int);
+
+
+String smoke_detector = "Q23  ";
+
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   if (!manager.init())
   {
     Serial.println("Manager init failed");
@@ -38,6 +52,10 @@ void setup()
 
   rf95.setFrequency(RF95_FREQ);
   rf95.setTxPower(13, false);
+
+  Wire.begin(SLAVE_ADDRESS);
+  Wire.onRequest(requestEvent);
+  Wire.onReceive(receiveEvent);
 }
 
 void loop()
@@ -55,6 +73,7 @@ void loop()
       Serial.print(": ");
       for (uint8_t i = 0; i < len; i++)
       {
+        smoke_detector += (char)buf[i];
         Serial.print((char)buf[i]);
       }
       Serial.println();
@@ -69,5 +88,22 @@ void loop()
     {
       Serial.println("recvfromAck failed");
     }
+  }
+}
+
+void requestEvent()
+{
+  Serial.println("Request Event");
+  Serial.println(smoke_detector);
+  Wire.write(smoke_detector.c_str());
+  //smoke_detector = "";
+}
+
+void receiveEvent(int howMany)
+{
+  while (Wire.available())
+  {
+    char c = Wire.read();
+    Serial.print(c);
   }
 }

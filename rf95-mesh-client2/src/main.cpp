@@ -25,7 +25,7 @@ RHMesh manager(rf95, CLIENT2_ADDRESS);
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   if (!manager.init())
   {
