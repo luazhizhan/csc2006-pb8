@@ -32,12 +32,19 @@ void setup()
     while (1)
       ;
   }
-  Serial.println("LoRa radio init OK!");
+  Serial.println("LoRa server init OK!");
   Serial.print("Set Freq to: ");
   Serial.println(RF95_FREQ);
 
   rf95.setFrequency(RF95_FREQ);
-  rf95.setTxPower(13, false);
+  rf95.setTxPower(20, false);
+
+  // long-range transmission, relatively low data rate, low power consumption
+  // 125 kHz bw, 2048 chips/symbol, CR 4/5
+  rf95.setModemConfig(RH_RF95::Bw125Cr45Sf2048);
+
+  // increase timeout as data rate is low
+  manager.setTimeout(5000);
 }
 
 void loop()
@@ -50,10 +57,10 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print("got request from : 0x");
+      Serial.print("got request from : client");
       Serial.print(from, HEX);
       Serial.print(": ");
-      for (uint8_t i = 0; i < len; i++)
+      for (uint8_t i = 0; i < len - 1; i++)
       {
         Serial.print((char)buf[i]);
       }
