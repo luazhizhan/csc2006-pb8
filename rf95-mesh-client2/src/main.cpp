@@ -27,6 +27,9 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, CLIENT2_ADDRESS);
 
 uint32_t msgCount = 0;
+// IR sensor
+const int IN_D0 = 8; // digital input
+
 void setup()
 {
   Serial.begin(9600);
@@ -51,13 +54,15 @@ void setup()
 
   // increase timeout as data rate is low
   manager.setTimeout(5000);
+
+  pinMode(IN_D0, INPUT);
 }
 
 void loop()
 {
   if (millis() % 5000 == 0)
   {
-    uint8_t data[32] = "C2!";
+    //uint8_t data[32] = "C2!";
     Serial.println(F("Sending to gateway"));
     msgCount++;
     // // Get current Unix time
@@ -75,6 +80,19 @@ void loop()
     
     //sprintf((char*)data, "%d", msgCount);
 
+
+    // Reads the digital input from the IR distance sensor
+    // 0 is close, 1 is far
+    bool IR_D0 = digitalRead(IN_D0);
+
+    char data[16];
+    sprintf(data, "client2 - %d", IR_D0);
+    uint8_t dataBytes[11];
+    memcpy(dataBytes, data, sizeof(data));
+    // serial print data 
+    Serial.println(data);
+    Serial.println("Sending to gateway");
+
     char msgCountStr[11];  // buffer to store the formatted value of msgCount
     itoa(msgCount, msgCountStr, 10);  // convert msgCount to a string with base 10
     strcat((char*)data, msgCountStr);
@@ -90,7 +108,12 @@ void loop()
     Serial.println((char*)data);
     aes128_enc_single(key, data);
     Serial.println((char *)data);
-    if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
+
+
+
+    // Send a message to a rf95-mesh-server
+    // A route to the destination will be automatically discovered.
+    if (manager.sendtoWait(dataBytes, sizeof(dataBytes), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
     {
       Serial.println(F("Sent to next hop"));
     }
@@ -109,6 +132,7 @@ void loop()
     if (manager.recvfromAck(buf, &len, &from))
     {
       Serial.print(F("got message from : client"));
+      Serial.print("got message from : 0x");
       Serial.print(from, HEX);
       Serial.print(F(": "));
       aes128_dec_single(key, buf);
