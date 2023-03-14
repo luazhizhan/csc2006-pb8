@@ -6,6 +6,9 @@
 #include <RH_RF95.h>
 #include <RHMesh.h>
 #include <RHRouter.h>
+#include <AESLib.h>
+
+uint8_t key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -23,19 +26,20 @@
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, CLIENT2_ADDRESS);
 
+uint32_t msgCount = 0;
 void setup()
 {
   Serial.begin(9600);
 
   if (!manager.init())
   {
-    Serial.println("Manager init failed");
+    Serial.println(F("Manager init failed"));
     while (1)
       ;
   }
-  Serial.println("LoRa client2 init OK!");
+  Serial.println(F("LoRa client2 init OK!"));
 
-  Serial.print("Set Freq to: ");
+  Serial.print(F("Set Freq to: "));
   Serial.println(RF95_FREQ);
 
   rf95.setFrequency(RF95_FREQ);
@@ -53,18 +57,46 @@ void loop()
 {
   if (millis() % 5000 == 0)
   {
-    uint8_t data[] = "CLIENT2!";
-    Serial.println("Sending to gateway");
+    uint8_t data[32] = "C2!";
+    Serial.println(F("Sending to gateway"));
+    msgCount++;
+    // // Get current Unix time
+    // unixTime = time(NULL);
+    // // Create a buffer to store the formatted time string
 
-    // Send a message to a rf95-mesh-server
-    // A route to the destination will be automatically discovered.
+    // // Format the Unix time as a string
+    // sprintf(timeStr, "t:%lu", unixTime);
+    // strftime(timeStr, sizeof(timeStr), "%c", gmtime(&unixTime));
+    // Serial.print("Unix time: ");
+    // Serial.println(timeStr);
+    // // Append the time string to the data array
+    //strcat((char*)data, msgCount);
+
+    
+    //sprintf((char*)data, "%d", msgCount);
+
+    char msgCountStr[11];  // buffer to store the formatted value of msgCount
+    itoa(msgCount, msgCountStr, 10);  // convert msgCount to a string with base 10
+    strcat((char*)data, msgCountStr);
+
+    int padding_bytes = 16 - (strlen((char*)data));
+    Serial.print("padding bytes: ");
+    Serial.println(padding_bytes);
+    // Append the padding bytes
+    for (int i = 0; i < padding_bytes; i++) {
+        data[strlen((char*)data) + i] = '\0';
+    }
+    Serial.print("data: ");
+    Serial.println((char*)data);
+    aes128_enc_single(key, data);
+    Serial.println((char *)data);
     if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
     {
-      Serial.println("Sent to next hop");
+      Serial.println(F("Sent to next hop"));
     }
     else
     {
-      Serial.println("sendtoWait failed");
+      Serial.println(F("sendtoWait failed"));
     }
   }
 
@@ -76,9 +108,11 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print("got message from : client");
+      Serial.print(F("got message from : client"));
       Serial.print(from, HEX);
-      Serial.print(": ");
+      Serial.print(F(": "));
+      aes128_dec_single(key, buf);
+      len = sizeof(buf);
       Serial.println((char *)buf);
     }
   }
