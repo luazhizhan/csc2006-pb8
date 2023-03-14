@@ -23,6 +23,9 @@
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, CLIENT2_ADDRESS);
 
+// IR sensor
+const int IN_D0 = 8; // digital input
+
 void setup()
 {
   Serial.begin(9600);
@@ -47,18 +50,29 @@ void setup()
 
   // increase timeout as data rate is low
   manager.setTimeout(5000);
+
+  pinMode(IN_D0, INPUT);
 }
 
 void loop()
 {
   if (millis() % 5000 == 0)
   {
-    uint8_t data[] = "CLIENT2!";
+    // Reads the digital input from the IR distance sensor
+    // 0 is close, 1 is far
+    bool IR_D0 = digitalRead(IN_D0);
+
+    char data[11];
+    sprintf(data, "client2 - %d", IR_D0);
+    uint8_t dataBytes[11];
+    memcpy(dataBytes, data, sizeof(data));
+    // serial print data 
+    Serial.println(data);
     Serial.println("Sending to gateway");
 
     // Send a message to a rf95-mesh-server
     // A route to the destination will be automatically discovered.
-    if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
+    if (manager.sendtoWait(dataBytes, sizeof(dataBytes), SERVER_ADDRESS) == RH_ROUTER_ERROR_NONE)
     {
       Serial.println("Sent to next hop");
     }
@@ -76,7 +90,7 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print("got message from : client");
+      Serial.print("got message from : 0x");
       Serial.print(from, HEX);
       Serial.print(": ");
       Serial.println((char *)buf);
