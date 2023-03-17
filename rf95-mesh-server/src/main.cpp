@@ -8,7 +8,7 @@
 #include <RHRouter.h>
 #include <AESLib.h>
 
-uint8_t key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+uint8_t key[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -26,6 +26,7 @@ uint8_t key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, SERVER_ADDRESS);
 uint8_t buf[RH_MESH_MAX_MESSAGE_LEN];
+
 void setup()
 {
   Serial.begin(9600);
@@ -55,7 +56,7 @@ void loop()
   if (manager.available())
   {
     uint8_t data[] = "ACK3456789012345";
-    
+
     uint8_t len = sizeof(buf);
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
@@ -65,7 +66,7 @@ void loop()
       Serial.print(F(": "));
       aes128_dec_single(key, buf);
       Serial.print(F("Decrypted: "));
-      Serial.print((char*)buf);
+      Serial.print((char *)buf);
       Serial.println();
       aes128_enc_single(key, data);
       // Send a reply back to the originator client

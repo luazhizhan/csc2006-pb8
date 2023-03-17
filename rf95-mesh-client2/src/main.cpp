@@ -8,7 +8,7 @@
 #include <RHRouter.h>
 #include <AESLib.h>
 
-uint8_t key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+uint8_t key[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -27,6 +27,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, CLIENT2_ADDRESS);
 
 uint32_t msgCount = 0;
+
 // IR sensor
 const int IN_D0 = 8; // digital input
 
@@ -62,54 +63,31 @@ void loop()
 {
   if (millis() % 5000 == 0)
   {
-    //uint8_t data[32] = "C2!";
+    // uint8_t data[32] = "C2!";
     Serial.println(F("Sending to gateway"));
     msgCount++;
-    // // Get current Unix time
-    // unixTime = time(NULL);
-    // // Create a buffer to store the formatted time string
-
-    // // Format the Unix time as a string
-    // sprintf(timeStr, "t:%lu", unixTime);
-    // strftime(timeStr, sizeof(timeStr), "%c", gmtime(&unixTime));
-    // Serial.print("Unix time: ");
-    // Serial.println(timeStr);
-    // // Append the time string to the data array
-    //strcat((char*)data, msgCount);
-
-    
-    //sprintf((char*)data, "%d", msgCount);
-
-
-    // Reads the digital input from the IR distance sensor
-    // 0 is close, 1 is far
     bool IR_D0 = digitalRead(IN_D0);
 
-    char data[16];
-    sprintf(data, "client2 - %d", IR_D0);
-    uint8_t dataBytes[11];
-    memcpy(dataBytes, data, sizeof(data));
-    // serial print data 
-    Serial.println(data);
-    Serial.println("Sending to gateway");
+    char data[16];                    // 16 bytes of char
+    sprintf(data, "0x2 - %d", IR_D0); // concat the string with the IR sensor data
+    uint8_t dataBytes[32];
+    memcpy(dataBytes, data, sizeof(data)); // copy the data to the uint8_t array
 
-    char msgCountStr[11];  // buffer to store the formatted value of msgCount
-    itoa(msgCount, msgCountStr, 10);  // convert msgCount to a string with base 10
-    strcat((char*)data, msgCountStr);
-
-    int padding_bytes = 16 - (strlen((char*)data));
+    char msgCountStr[11];                   // buffer to store the formatted value of msgCount
+    itoa(msgCount, msgCountStr, 10);        // convert msgCount to a string with base 10
+    strcat((char *)dataBytes, msgCountStr); // append the msgCountStr to the dataBytes
+    int padding_bytes = 16 - (strlen((char *)dataBytes));
     Serial.print("padding bytes: ");
     Serial.println(padding_bytes);
     // Append the padding bytes
-    for (int i = 0; i < padding_bytes; i++) {
-        data[strlen((char*)data) + i] = '\0';
+    for (int i = 0; i < padding_bytes; i++)
+    {
+      dataBytes[strlen((char *)dataBytes) + i] = '\0';
     }
     Serial.print("data: ");
-    Serial.println((char*)data);
-    aes128_enc_single(key, data);
-    Serial.println((char *)data);
-
-
+    Serial.println((char *)dataBytes);
+    aes128_enc_single(key, dataBytes);
+    Serial.println((char *)dataBytes);
 
     // Send a message to a rf95-mesh-server
     // A route to the destination will be automatically discovered.
@@ -131,8 +109,7 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print(F("got message from : client"));
-      Serial.print("got message from : 0x");
+      Serial.print(F("got message from : 0x"));
       Serial.print(from, HEX);
       Serial.print(F(": "));
       aes128_dec_single(key, buf);

@@ -6,6 +6,9 @@
 #include <RH_RF95.h>
 #include <RHMesh.h>
 #include <RHRouter.h>
+#include <AESLib.h>
+
+uint8_t key[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -25,6 +28,8 @@
 
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 RHMesh manager(rf95, CLIENT1_ADDRESS);
+
+uint32_t msgCount = 0;
 
 void setup()
 {
@@ -64,11 +69,28 @@ void loop()
     int sensorValue = digitalRead(MQ2pin); // read digital output pin
 
     // Send a message to a rf95-mesh-server
-    char data[11];
+    char data[16];
     sprintf(data, "client1 - %d", sensorValue);
-    uint8_t dataBytes[11];
+    uint8_t dataBytes[16];
     memcpy(dataBytes, data, sizeof(data));
     Serial.println("Sending to gateway");
+
+    char msgCountStr[11];                   // buffer to store the formatted value of msgCount
+    itoa(msgCount, msgCountStr, 10);        // convert msgCount to a string with base 10
+    strcat((char *)dataBytes, msgCountStr); // append the msgCountStr to the dataBytes
+
+    int padding_bytes = 16 - (strlen((char *)dataBytes));
+    Serial.print("padding bytes: ");
+    Serial.println(padding_bytes);
+    // Append the padding bytes
+    for (int i = 0; i < padding_bytes; i++)
+    {
+      dataBytes[strlen((char *)dataBytes) + i] = '\0';
+    }
+    Serial.print("data: ");
+    Serial.println((char *)dataBytes);
+    aes128_enc_single(key, dataBytes);
+    Serial.println((char *)dataBytes);
 
     // Send a message to a rf95-mesh-server
     // A route to the destination will be automatically discovered.
@@ -90,9 +112,11 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print("got message from : 0x");
+      Serial.print(F("got message from : 0x"));
       Serial.print(from, HEX);
-      Serial.print(": ");
+      Serial.print(F(": "));
+      aes128_dec_single(key, buf);
+      len = sizeof(buf);
       Serial.println((char *)buf);
     }
     else
