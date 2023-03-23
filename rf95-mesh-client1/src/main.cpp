@@ -15,7 +15,7 @@ uint8_t key[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 #define RFM95_INT 2
 
 // MQ2 Gas/Smoke Sensor
-#define MQ2pin 8
+#define MQ2pin 9
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 454.5
@@ -67,7 +67,8 @@ void loop()
     // 0 - smoke detected
     // 1 - no smoke detected
     int sensorValue = digitalRead(MQ2pin); // read digital output pin
-
+    if(!sensorValue)
+    tone(8,523,1000);
     // Send a message to a rf95-mesh-server
     char data[16];
     sprintf(data, "client1 - %d", sensorValue);
