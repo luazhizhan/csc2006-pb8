@@ -1,7 +1,7 @@
 # Trasnfer File From Pi to Pc
-# scp pi@192.168.159.127:~/IOT/master.py C:\Users\Kenny\Documents\SIT-UOG\Year_2\Tri_2\CSC2006-Internet_of_Things_Protocols_and_Networks\Projects
+# scp pi@[IP Address]:~/[pi file dir]/master.py [Local master.py Location]
 # Trasnfer File From Pc to Pi
-# scp C:\Users\Kenny\Documents\SIT-UOG\Year_2\Tri_2\CSC2006-Internet_of_Things_Protocols_and_Networks\Projects\master.py pi@192.168.159.127:~/IOT/master.py
+# scp [Local master.py Location] pi@[IP Address]:~/[pi file dir]/master.py
 
 import smbus
 import time
