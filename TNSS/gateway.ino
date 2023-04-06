@@ -52,7 +52,7 @@ String packetString;    // received message for display
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Mesh Nodes Parameters
-byte myNode = 1;    // my node number
+byte myNode = 0;    // my node number
 byte sensorNode;    // sensors node number
 byte relayNode;     // relaying node number
 
@@ -73,8 +73,11 @@ int encNode[nNodes]={0};              // encrypted
 unsigned long nodeTimestamps[nNodes]; // timestamps for each nodes
 int nodeCounter[nNodes];
 int lowestNode = 255; // 0 to 15, 255 is false, 0-15 is node last got a time sync signal from
+String otherSensorValue[nNodes];
 
-int TB =0;
+bool sendTBBroadcast = false;
+String TBBroadcast= "";
+
 unsigned long localCounter =0;
 
 void setup()
@@ -83,7 +86,7 @@ void setup()
   Wire.begin();
   Wire.begin(I2C_SLAVE);
   Wire.onRequest(requestEvent);
-  Wire.onReceive(receiveEvent);  
+  Wire.onReceive(receiveEvent);
   Wire.setClock(400000L);  
 
 #if RST_PIN >= 0
@@ -136,11 +139,15 @@ void setup()
 void loop()
 { 
    int sensorValue = digitalRead(MQ2pin);
-  // Serial.print("READING FROM HARDWARE");
-  // Serial.println(sensorValue);
-  if(!sensorValue)
+//  Serial.print("READING FROM HARDWARE");
+//  Serial.println(sensorValue);
+  if(!sensorValue){
   tone(8,523,100);
-
+  digitalWrite(3, HIGH);
+  }
+  else{
+    digitalWrite(3, LOW);
+  }
   //get the sensors status
   if (myNode != 0)
   {
@@ -198,8 +205,10 @@ void loop()
         
 
   int packetSize = LoRa.parsePacket();
-  if (packetSize)     // receive data
+  // receive data
+  if (packetSize){
     cbk(packetSize);
+  }  
 }
 
 void cbk(int packetLength)
@@ -360,7 +369,7 @@ String stringMid(String s, int i, int j) // stringmid("mystring",4,3) returns "t
 // where 03 is relay from, 12 is node (hex), AAAA is data, BBBB is the hops & TTTTTTTT is timestamp
 void processDataMessage() 
 {
-   String s;
+  String s;
   unsigned long node;
   unsigned long valueSensor;
   unsigned long hopCount;
@@ -405,6 +414,18 @@ void processDataMessage()
     Serial.print("incomming:");
     Serial.println(incCount);
 
+    // s = stringMid(receivedMessage, 28, 1);
+    // //otherSensorValue[node]=s;
+    // Serial.print("recieved sensor  ");
+    // Serial.print(node);
+    // Serial.print(" as: ");
+    // Serial.println(s); 
+    // if (s ="1"){
+    //   otherSensorValue[node]=node+",1";
+    // }
+    // else{
+    //   otherSensorValue[node]=node+",0";
+    // }
 
     nodeTimestamps[node] = timestamp;  // update the time stamp
     if (valueSensor > 0x7FFF)          // negative values
@@ -473,10 +494,23 @@ void createDataMessage() // read A0 and A1 create data string
     buildMessage += stringMid(s, 5, 4); // data value in hex for timestamp
     s = ulongToHex(nodeTimestamps[i]);  // timestamp value for this node
     buildMessage += s;// add this
+    
 
     String sendMessage;
     sendMessage = "Data=" + buildMessage;
     sendMessage += stringMid(ulongToHex(localCounter), 7, 2);
+    Serial.print("added sensor data");
+    if (digitalRead(MQ2pin)){
+      sendMessage += "1";
+      Serial.println(1);
+    }
+    else{
+      Serial.println(0);
+      sendMessage += "0";
+    }
+    Serial.print("added sensor data");
+    Serial.println(sendMessage);
+
     aes128_enc_single(key, sendMessage.c_str());
     // Serial.print("encrypted:");
     // Serial.println(sendMessage);
@@ -485,7 +519,7 @@ void createDataMessage() // read A0 and A1 create data string
     LoRa.beginPacket();
     LoRa.println(sendMessage);
     LoRa.endPacket();
-    Serial.print("send packet");
+    Serial.println("send packet");
     // aes128_dec_single(key, sendMessage.c_str());
     // Serial.print("decrypted:");
     // Serial.println(sendMessage);   
@@ -494,9 +528,10 @@ void createDataMessage() // read A0 and A1 create data string
 
     // Serial.println("test"+ciphertext);        // print sent Data
     packetString = ""; // clear received data messages
+      localCounter++;
     delay(200); // errors on 75, ok on 100
   }
-  localCounter++;
+
 
 }
 
@@ -553,6 +588,19 @@ void NodeTimeSlot() // takes 100ms at beginning of slot so don't tx during this 
       digitalWrite(LED, HIGH);  // led on while tx long data message
       createDataMessage();      // send out all my local data via radio
       digitalWrite(LED, LOW);   // led off
+      if(sendTBBroadcast){
+        sendTBBroadcast=false;
+
+        aes128_enc_single(key, TBBroadcast.c_str());
+        // Serial.print("encrypted:");
+        // Serial.println(sendMessage);
+
+        // send packet
+        LoRa.beginPacket();
+        LoRa.println(sendTBBroadcast);
+        LoRa.endPacket();
+        Serial.print("send packet");
+      }
       relayNode = 255;
     }
   }
@@ -611,23 +659,28 @@ void displayOutputFrom(int x) // query nodes values to follow
   display.println(y);
 }
 
+void toggleTBBroadcast(int node, bool state) {
+  sendTBBroadcast = true;
+  TBBroadcast = "TB="+node+state;
+}
 
-void processTBMessage() // TB=NNA   nn = counter A = true / false 
+
+void processTBMessage() // TB=NA   n = counter A = true / false 
 {
   String s;
-  s = stringMid(radioString, 4, 2);
-  s = "000000" + s;
+  s = stringMid(radioString, 4, 1);
+  s = "0000000" + s;
   int TBNum = (int) hexToUlong(s);
-  s = radioString;
-  s = stringMid(s, 6, 1);
-  if(TBNum>TB){ 
-    TB = TBNum;
+  if (TBNum==myNode){  
+    s = radioString;
+    s = stringMid(s, 5, 1);
     int data = "0000000"+hexToUlong(s);       // convert back to number
     if (data != 0)
       digitalWrite(3, HIGH);
     else
       digitalWrite(3, LOW);
   }
+
 }
 
 void receiveEvent(int numBytes) {
@@ -652,17 +705,50 @@ void requestEvent() {
 
   Serial.print("requestEvent - Received data : ");
   Serial.println(receivedData);
-  
-  // Send all the data collected through sensor as requested by master device
+  String currNode = stringMid(packetString, 2,1);
+  int status =  stringMid(packetString, 23,1).toInt();
+    // Send all the data collected through sensor as requested by master device
   if (strcmp(receivedData.c_str(), "Motion") == 0) {
-    requestData = "SD-" + String(random(1,30));
+    if((strcmp(currNode.c_str(), "2") == 0) && status == 1){
+      requestData = "SD-"+ currNode;
+    }else{
+      requestData = "SD-"+String(random(10,30));
+    }
+    
   } else if (strcmp(receivedData.c_str(), "Smoke") == 0) { 
-    requestData = "SS-" + String(random(1,30));
+    if((strcmp(currNode.c_str(), "1") == 0) && status == 1){
+      requestData = "SS-"+ currNode;
+    }else{
+      requestData = "SS-"+String(random(10,30));
+    }
+  } else if((strcmp(receivedData.c_str(), "Smoke LED") == 0)){
+    if(int(random(1,3)) == 1){
+      requestData = "true";
+    }else{
+      requestData = "false";
+    }
+  } else if((strcmp(receivedData.c_str(), "Motion LED") == 0)){
+    if(int(random(1,3)) == 1){
+      requestData = "true";
+    }else{
+      requestData = "false";
+    }
   } else {
-    requestData = "Error";
+    requestData = "NA";
   }
-
+    
   Wire.write(strlen(requestData.c_str()));
   // Send the incoming message to the master
   Wire.write(requestData.c_str(), strlen(requestData.c_str()));  
 }
+
+
+
+
+
+
+
+
+
+
+
