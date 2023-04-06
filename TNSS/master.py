@@ -1,8 +1,9 @@
 # Trasnfer File From Pi to Pc
-# scp pi@[IP Address]:~/[pi file dir]/master.py [Local master.py Location]
+# scp pi@[PI]:~/IOT/master.py [File source dir]
 # Trasnfer File From Pc to Pi
-# scp [Local master.py Location] pi@[IP Address]:~/[pi file dir]/master.py
+# scp [File source dir] pi@[IP]:~/IOT/master.py
 
+# import library
 import smbus
 import time
 import json
@@ -27,8 +28,6 @@ BUS = smbus.SMBus(1)
 def send_data(data):
   print("Sending data")
   data_bytes = [ord(c) for c in data]
-  # print("data size: ", len(data))
-  # print("data_bytes: " ,data_bytes)
   try:
     BUS.write_i2c_block_data(ADDRESS, 0x00, data_bytes)
   except OSError as e:
@@ -38,36 +37,73 @@ def send_data(data):
 # I2C receive data from slave
 def receive_data(length):
   print("Receive data")
-  data = BUS.read_i2c_block_data(ADDRESS, 0x00, length)
-  data_str = ''.join([chr(byte) for byte in data])
-  cleaned_str = ""
-  for char in data_str:
+  try:
+    data = BUS.read_i2c_block_data(ADDRESS, 0x00, length)
+    data_str = ''.join([chr(byte) for byte in data])
+    cleaned_str = ""
+    for char in data_str:
       if char != 'ÿ':
           cleaned_str += char
-  return cleaned_str[1:]
-
-# Connect to ThingsBoard using default MQTT port and 60 seconds keepalive interval
-def connect_to_tb():
+    return cleaned_str[1:]
+  except OSError as e:
+    print("I2C communication error occurred")
+    restart_program()
+  
+# Connect to ThingsBoard using default MQTT port and 60 seconds keepalive interval 
+def tb_configuration():
   print("Connecting to ThingsBoard")
   client = mqtt.Client()
   client.username_pw_set(ACCESS_TOKEN)
   client.connect(THINGSBOARD_HOST, 1883, 60)
 
-  # # Subscribe to attributes topic
-  # client.subscribe(ATTRIBUTES_TOPIC)
-
-  # # Start the MQTT client loop in a separate thread
-  # client.loop_start()
-
   return client
+
+# Subscribe to RPC topic
+def connect_to_tb():
+  client = tb_configuration()
+
+  # Subscribe to RPC topic
+  result, _ = client.subscribe('v1/devices/me/rpc/request/+')
+  if result != mqtt.MQTT_ERR_SUCCESS:
+      print(f"Failed to subscribe to RPC topic: {result}")
+      return
+
+  client.subscribe('v1/devices/me/rpc/request/+')
+
+  # Set the callback function for RPC requests
+  client.message_callback_add('v1/devices/me/rpc/request/+', on_rpc_request)
+
+  # Start the loop for message reception
+  client.loop_start()
+  
+  print("Connected to ThingsBoard and subscribed to RPC topic")
 
 # Send telemetry data
 def send_telemetry_data(data):
-   print("Sending to ThingsBoard")
-   client = connect_to_tb()
+   time.sleep(2)
+   print("Sending telemetry to ThingsBoard")
+   client = tb_configuration()
    client.publish(TELEMETRY_TOPIC, json.dumps(data), 1)
    client.loop()
    client.disconnect()
+
+# Define callback function for RPC requests
+def on_rpc_request(client, userdata, message):
+    print('onRPC')
+    payload = json.loads(message.payload.decode())
+    print('Received setLed RPC with state:', payload)
+    if 'method' in payload and payload['method'] == 'setLed':
+        led_state = payload['params']['ledState']
+        print('Received setLed RPC with state:', led_state)
+
+# Define a function to send attributes to ThingsBoard
+def send_attributes(data):
+    time.sleep(2)
+    print("Sending attributes to ThingsBoard")
+    client = tb_configuration()
+    client.publish(ATTRIBUTES_TOPIC, json.dumps(data), 1, True)
+    client.loop()
+    client.disconnect()
 
 # Define event handler for watchdog
 class MyHandler(FileSystemEventHandler):
@@ -92,18 +128,29 @@ def restart_program():
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
+# Start the thingsboard thread
+def connect_thread():
+    t = threading.Thread(target=connect_to_tb)
+    t.daemon = True
+    t.start()
 
 def main():
     #Start the watchdog thread
     t = threading.Thread(target=watchdog_thread)
     t.start()
 
+    # Connect to ThingsBoard in a separate thread
+    connect_thread()
+    
     # Initialize variables
     smoke = 'None'
+    smokeLED = False
     motion = 'None'
+    motionLED = False
+
 
     while 1: 
-      # Send a message to turn on the LED and wait for response from the slave
+      # Send a message to get somke data and wait for response from the slave
       send_data('Smoke')
       received_data = receive_data(32)
       print('Received: ', received_data)
@@ -112,8 +159,20 @@ def main():
         # Send telemetry data to ThingsBoard
         data = {'Smoke': smoke}
         send_telemetry_data(data)
-      time.sleep(3)
+      time.sleep(2)
 
+      # Send a message to get somke LED and wait for response from the slave
+      send_data('Smoke LED')
+      received_data = receive_data(32)
+      print('Received: ', received_data)
+      if smokeLED != received_data:
+        smokeLED = received_data
+        # Send attributes data to ThingsBoard
+        data = {'Smoke LED': smokeLED}
+        send_attributes(data)
+      time.sleep(2)
+
+      # Send a message to get motion data and wait for response from the slave
       send_data('Motion')
       received_data = receive_data(32)
       print('Received: ', received_data)
@@ -122,8 +181,18 @@ def main():
         # Send telemetry data to ThingsBoard
         data = {'Motion': motion}
         send_telemetry_data(data)
+      time.sleep(2)
 
-      time.sleep(3)
+      # Send a message to get motion LED and wait for response from the slave
+      send_data('Motion LED')
+      received_data = receive_data(32)
+      print('Received: ', received_data)
+      if motionLED != received_data:
+        motionLED = received_data
+        # Send attributes data to ThingsBoard
+        data = {'Motion LED': motionLED}
+        send_attributes(data)
+      time.sleep(2)
 
 if __name__ == '__main__':
     main()
