@@ -1,5 +1,5 @@
 # Trasnfer File From Pi to Pc
-# scp pi@[PI]:~/IOT/master.py [File source dir]
+# scp pi@[IP]:~/IOT/master.py [File source dir]
 # Trasnfer File From Pc to Pi
 # scp [File source dir] pi@[IP]:~/IOT/master.py
 
