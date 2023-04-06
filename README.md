@@ -42,22 +42,22 @@ There are 3 source code files under TNSS.
 2. [Arduino](https://www.arduino.cc/en/software)
 3. [Pi 4B](https://www.raspberrypi.com/software/)
 
-## Dashboard
+### Node, Gateway (Maker UNO, LoRa Shield)
+
+Ensure you have installed Arduino IDE.
+Connect cable from Maker UNO to your workstation. Ensure the correct file and COM port is selected. Click on top left `arrow button` to build and upload.
+
+### Pi 4B (Gateway)
+
+Connect Pi 4B using putty to your workstation. Ensure the correct file and path. Send the file from your local folder by opening cmd and using scp command to send to Pi 4B. Run the file by 'python3 master.py'
+
+### Dashboard (Thingsboard)
 
 Create a new devices to connect Pi 4B to the thingsboard. Click on the create device to get the `access token`. This `access token` is use to establish a connection to thingsboard for sending and receiving of data from Pi 4B. 
 
 Create a new dashboard and add the telemtery and attribute data to the dashboard.
 
 Issue: Pi 4B was uable to receive any downlink data from thingsboard after using mutlithread to create the connection and subscribing to the RPC topic.
-
-### Upload to Maker UNO
-
-Ensure you have installed Arduino IDE.
-Connect cable from Maker UNO to your workstation. Ensure the correct file and COM port is selected. Click on top left `arrow button` to build and upload.
-
-### Upload to Pi 4B
-
-Connect Pi 4B using putty to your workstation. Ensure the correct file and path. Send the file from your local folder by opening cmd and using scp command to send to Pi 4B. Run the file by 'pyhton3 master.py'
 
 ## References
 
