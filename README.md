@@ -33,9 +33,9 @@ Connect cable from Maker UNO to your workstation. Ensure the correct project and
 1. https://cdn.cytron.io/makeruno/Arduino_Learning_Guide_for_Beginner_Using_Maker_UNO.pdf
 
 
-# TNNS
+# TSNS
 
-There are 3 folders under TNNS. `Nodes1` is just nodes with LoRa-shield and their respective sensors. To run on different LoRa-shield, change the `myNode` to any value from 1-4. `Gateway` is the Gateway with LoRa-shield and `master` is for Pi 4B (MQTT Client).
+There are 3 folders under TNSS. `Nodes1` is just nodes with LoRa-shield and their respective sensors. To run on different LoRa-shield, change the `myNode` to any value from 1-4. `Gateway` is the Gateway with LoRa-shield and `master` is for Pi 4B (MQTT Client).
 
 ### Installation
 
