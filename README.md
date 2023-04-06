@@ -1,4 +1,4 @@
-# csc2006-pb8-radiohead-lora-mesh
+# csc2006-pb8
 
 CSC2006 PB8 Building Management IoT project. Uses LoRa with mesh topology. Powered by [RadioHead Packet Radio library](https://github.com/hallard/RadioHead)
 
@@ -31,3 +31,32 @@ Connect cable from Maker UNO to your workstation. Ensure the correct project and
 ### Maker UNO
 
 1. https://cdn.cytron.io/makeruno/Arduino_Learning_Guide_for_Beginner_Using_Maker_UNO.pdf
+
+
+# TNNS
+
+There are 3 folders under TNNS. `Nodes1` is just nodes with LoRa-shield and their respective sensors. To run on different LoRa-shield, change the `myNode` to any value from 1-4. `Gateway` is the Gateway with LoRa-shield and `master` is for Pi 4B (MQTT Client).
+
+### Installation
+
+1. [Thingsboard](https://demo.thingsboard.io/)
+2. [Arduino](https://www.arduino.cc/en/software)
+3. [Pi 4B](https://www.raspberrypi.com/software/)
+
+## Dash board
+
+Create a new devices to connect Pi 4B to the thingsboard. Click on the create device to get the `access token`. This `access token` is use to establish a connection to thingsboard for sending and receiving of data from Pi 4B. 
+
+Create a new dashboard and add the telemtery and attribute data to the dashboard.
+
+Issue: Pi 4B was uable to receive any downlink data from thingsboard after using mutlithread to create the connection and subscribing to the RPC topic.
+
+### Upload to Maker UNO
+
+Ensure you have installed Arduino IDE.
+Connect cable from Maker UNO to your workstation. Ensure the correct file and COM port is selected. Click on top left `arrow button` to build and upload.
+
+### Upload to Pi 4B
+
+Connect Pi 4B using putty to your workstation. Ensure the correct file and path. Send the file from your local folder by opening cmd and using scp command to send to Pi 4B. Run the file by 'pyhton3 master.py'
+
